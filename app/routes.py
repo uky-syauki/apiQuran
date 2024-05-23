@@ -4,8 +4,9 @@ from app.models import Surah
 from flask import jsonify
 from sqlalchemy.sql import text
 
+import openai
 
-
+openai.api_key = "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"
 
 
 
@@ -56,7 +57,7 @@ def cari(kata):
     hasil = {
         "ayat":[],
         "jumlah":0,
-        "nama_surah":kata
+        "nama_surah": kata
     }
     for isi in ayat:
         tmp = ""
@@ -84,14 +85,49 @@ def search_surah(query):
 def mencari(kata):
     print(kata)
     results = search_surah(kata)
-    json = {
-        "hasil":[]
+    hasil = {
+        "ayat":[],
+        "jumlah":0,
+        "nama_surah": kata
     }
     for isi in results:
         tmp = ""
-        for subisi in isi:
-            tmp += str(subisi) + " "
-        json["hasil"].append(tmp)
-        
+        tmp += str(isi[0]) + ":"
+        tmp += str(isi[1]) + ":"
+        tmp += str(isi[2]) + "\n"
+        tmp += str(isi[3])
+        hasil['ayat'].append(tmp)
+        hasil['jumlah'] += 1
+    
+    
     # response = [{'id_surah': result['id_surah'], 'nama_surah': result['nama_surah'], 'text_ayat': result['text_ayat']} for result in results]
-    return jsonify(json)
+    return jsonify(hasil)
+
+
+
+
+@app.route("/api/cari-ayat2/<kata>")
+def cari2(kata):
+    kata = kata.split(' ')
+    if len(kata) == 2:
+        ayat = Surah.query.with_entities(Surah.id_surah, Surah.nama_surah, Surah.id_ayat, Surah.text_ayat).filter(Surah.text_ayat.like(f'%{kata[0]}%'), Surah.text_ayat.like(f'%{kata[1]}%')).all()
+    elif len(kata) >= 3:
+        ayat = Surah.query.with_entities(Surah.id_surah, Surah.nama_surah, Surah.id_ayat, Surah.text_ayat).filter(Surah.text_ayat.like(f'%{kata[0]}%'), Surah.text_ayat.like(f'%{kata[1]}%'), Surah.text_ayat.like(f'%{kata[2]}%')).all()
+    else:
+        ayat = Surah.query.with_entities(Surah.id_surah, Surah.nama_surah, Surah.id_ayat, Surah.text_ayat).filter(Surah.text_ayat.like(f'%{kata}%')).all()
+    hasil = {
+        "ayat":[],
+        "jumlah":0,
+        "nama_surah":" ".join(kata)
+    }
+    for isi in ayat:
+        tmp = ""
+        tmp += (str(isi.id_surah) + ":")
+        tmp += (isi.nama_surah + ":")
+        tmp += (str(isi.id_ayat) + ":\n")
+        tmp += (isi.text_ayat)
+        hasil['ayat'].append(tmp)
+        hasil['jumlah'] += 1
+    return jsonify(hasil)
+
+
