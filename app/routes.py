@@ -4,9 +4,6 @@ from app.models import Surah
 from flask import jsonify
 from sqlalchemy.sql import text
 
-import openai
-
-openai.api_key = "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"
 
 
 
