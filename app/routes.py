@@ -1,7 +1,7 @@
 from app import app, db
-from app.models import Surah
+from app.models import Surah, History, Pesan
 
-from flask import jsonify
+from flask import jsonify, request
 from sqlalchemy.sql import text
 
 
@@ -30,9 +30,18 @@ def nama_surah():
 @app.route("/api/get-surah/<nama>")
 def getSurah(nama):
     surah = Surah.query.filter_by(nama_surah=nama).all()
-    idSurah = 0 if surah[0].id_surah < 4 else (surah[0].id_surah - 4)
-    nama_surah = Surah.query.with_entities(Surah.nama_surah).group_by(Surah.nama_surah).order_by(Surah.id_surah).filter(Surah.id_surah > idSurah).limit(8).all()
+    try:
+        idSurah = 0 if surah[0].id_surah < 5 else (surah[0].id_surah - 5)
+    except:
+        return jsonify({'pesan':'Error'})
+        
+    nama_surah = Surah.query.with_entities(Surah.nama_surah).group_by(Surah.nama_surah).order_by(Surah.id_surah).filter(Surah.id_surah > idSurah).limit(9).all()
     rekomendasi = [isi.nama_surah for isi in nama_surah]
+    try:
+        rekomendasi.remove(nama)
+    except:
+        pass
+
     hasil = {
         "nama_surah": nama.upper(),
         "id_surah":None,
@@ -45,6 +54,13 @@ def getSurah(nama):
             hasil['id_surah'] = isi.id_surah
         hasil['ayat'][f"{isi.id_ayat}"] = isi.text_ayat
         hasil['jumlah_ayat'] += 1
+    try:
+        his_surah = History(nama_surah=nama)
+        db.session.add(his_surah)
+        db.session.commit()
+        print(f"Add history: {nama}")
+    except:
+        print(f"Gagal menambahkan history: {nama}")
     return jsonify(hasil)
 
 
@@ -128,3 +144,18 @@ def cari2(kata):
     return jsonify(hasil)
 
 
+@app.route("/api/kritik-dan-saran", methods=["POST"])
+def kritik_dan_saran():
+    data = request.get_json()
+    dari = data.get("dari")
+    pesan = data.get("pesan")
+    if not pesan:
+        return jsonify({'error':'Kami mengharapkan kritikan dan saran yang membangun'})
+    try:
+        add_pesan = Pesan(dari=dari,isi=pesan)
+        db.session.add(add_pesan)
+        db.session.commit()
+        print(f"Pesan: {pesan}\nDari: {dari}")
+        return jsonify({"pesan":"Terima kasih atas kritikan dan sarannya"})
+    except:
+        return jsonify({'error':'Maaf, saat ini kami mengalami kegagalan saan menyimpan pesan anda'})
