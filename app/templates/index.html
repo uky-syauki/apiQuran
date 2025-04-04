@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Umpan Balik</title>
+  <!-- Tailwind CSS CDN -->
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-black">
+  <div class="container mx-auto p-4">
+    <div class="bg-black p-4 rounded-lg shadow-lg max-w-md mx-auto">
+      <h2 class="text-2xl text-gray-500 font-semibold mb-4 text-center">Umpan Balik (<span id="jumlah"></span>) ({{ dikunjungi }})</h2>
+      <!-- Chat container -->
+      <div id="chat-container" class="space-y-4 text-white">
+        <!-- Pesan akan disisipkan di sini menggunakan JavaScript -->
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Data chat
+    const chatData = {{ chart_data | tojson }};
+    console.log(chatData); 
+
+    const chatContainer = document.getElementById('chat-container');
+
+    // Mengonversi data ke array dan menyortir berdasarkan kunci secara descending agar pesan terbaru berada di atas
+    const messages = Object.keys(chatData)
+      .sort((a, b) => parseInt(b) - parseInt(a))
+      .map(key => chatData[key]);
+
+    console.log(messages.length);
+    // Loop untuk membuat tampilan pesan
+    messages.forEach(message => {
+      // Misalnya, jika sender adalah 'ahmad' tampilkan di sebelah kanan
+      const isRight = false;
+
+      // Container untuk tiap pesan
+      const messageDiv = document.createElement('div');
+      messageDiv.className = isRight ? 'flex justify-end' : 'flex justify-start';
+
+      // Chat bubble
+      const bubble = document.createElement('div');
+      bubble.className = 'max-w-xs px-4 py-2 rounded-lg';
+      bubble.style.backgroundColor = isRight ? 'rgba(20, 20, 25, 0.8)' : 'rgba(20, 20, 25, 0.8)';
+
+      // Nama pengirim
+      const sender = document.createElement('div');
+      sender.className = 'text-sm font-bold mb-1';
+      sender.textContent = message.dari;
+
+      // Isi pesan
+      const text = document.createElement('div');
+      text.className = 'text-sm';
+      text.textContent = message.pesan;
+
+      // Waktu pesan
+      const time = document.createElement('div');
+      time.className = 'text-xs text-gray-500 mt-1 text-right';
+      time.textContent = message.waktu;
+
+      // Menggabungkan elemen
+      bubble.appendChild(sender);
+      bubble.appendChild(text);
+      bubble.appendChild(time);
+      messageDiv.appendChild(bubble);
+      chatContainer.appendChild(messageDiv);
+    });
+    document.getElementById('jumlah').innerHTML = messages.length;
+  </script>
+</body>
+</html>

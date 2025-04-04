@@ -1,7 +1,7 @@
 from app import app, db
 from app.models import Surah, History, Pesan
 
-from flask import jsonify, request
+from flask import jsonify, request, render_template
 from sqlalchemy.sql import text
 
 
@@ -61,6 +61,44 @@ def getSurah(nama):
         print(f"Add history: {nama}")
     except:
         print(f"Gagal menambahkan history: {nama}")
+    return jsonify(hasil)
+
+
+@app.route("/api/get-surah-perkata/<nama>")
+def getSurahPerkata(nama):
+    surah = Surah.query.filter_by(nama_surah=nama).all()
+    try:
+        idSurah = 0 if surah[0].id_surah < 5 else (surah[0].id_surah - 5)
+    except:
+        return jsonify({'pesan':'Error'})
+        
+    nama_surah = Surah.query.with_entities(Surah.nama_surah).group_by(Surah.nama_surah).order_by(Surah.id_surah).filter(Surah.id_surah > idSurah).limit(9).all()
+    rekomendasi = [isi.nama_surah for isi in nama_surah]
+    try:
+        rekomendasi.remove(nama)
+    except:
+        pass
+
+    hasil = {
+        "nama_surah": nama.upper(),
+        "id_surah":None,
+        "ayat": {},
+        "jumlah_ayat":0,
+        "rekomendasi": rekomendasi
+    }
+
+    for isi in surah:
+        if hasil['id_surah'] == None:
+            hasil['id_surah'] = isi.id_surah
+        hasil['ayat'][f"{isi.id_ayat}"] = isi.text_ayat_perkata + isi.text_ayat[-1]
+        hasil['jumlah_ayat'] += 1
+    # try:
+    #     his_surah = History(nama_surah=nama)
+    #     db.session.add(his_surah)
+    #     db.session.commit()
+    #     print(f"Add history: {nama}")
+    # except:
+    #     print(f"Gagal menambahkan history: {nama}")
     return jsonify(hasil)
 
 
@@ -159,3 +197,19 @@ def kritik_dan_saran():
         return jsonify({"pesan":"Terima kasih atas kritikan dan sarannya"})
     except:
         return jsonify({'error':'Maaf, saat ini kami mengalami kegagalan saan menyimpan pesan anda'})
+
+
+@app.route('/umpan-balik')
+def umpanBalik():
+    daftar_pesan = Pesan.query.all()
+    daftar_pesan = daftar_pesan[::-1]
+    pesan = {}
+    for isi in daftar_pesan:
+        pesan[isi.id] = {
+            'dari': isi.dari,
+            'pesan': isi.isi,
+            'waktu': isi.waktu.strftime('%d-%m-%Y')
+        }
+    print(pesan)
+    dikunjungi = History.query.all()
+    return render_template('index.html', chart_data=pesan, dikunjungi=len(dikunjungi))
