@@ -43,3 +43,11 @@ class Pertanyaan(db.Model):
     pertanyaan = db.Column(db.Text)
     username = db.Column(db.String(50), default="Guest")
     waktu = db.Column(db.DateTime, default=datetime.utcnow)
+
+
+class ChatBacaan(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    kode_room = db.Column(db.String(20))
+    text = db.Column(db.Text)
+    response = db.Column(db.Text)
+    waktu = db.Column(db.DateTime, default=datetime.utcnow)

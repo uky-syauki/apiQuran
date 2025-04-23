@@ -1,10 +1,11 @@
 from app import app, db
-from app.models import Surah, History, Pesan, User
+from app.models import Surah, History, Pesan, User, ChatBacaan
 
 from flask import jsonify, request, render_template
 from sqlalchemy.sql import text
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
 
+import requests
 
 @app.route('/register', methods=['POST'])
 def register():
@@ -302,4 +303,61 @@ def indexAyat2(idsurah, idayatstart, idayatstop):
 
 
     return jsonify({'pesan':f'success', 'hasil':hasil})
+    
+
+def ask_ai(text):
+    url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=AIzaSyBrkBAHbsgTN0S5aDtY2p2JmpCv6X_Yeeg"
+    headers = {"Content-Type":"application/json"}
+    prompt = f"""
+    Anda adalah seorang ahli dalam ilmu agama Islam dengan pengetahuan yang sangat mendalam tentang Al-Qur'an, Hadist, dan ilmu fiqh. Anda telah menghafal seluruh 114 surah dalam Al-Qur'an secara lengkap dan akurat. Tugas Anda adalah menjawab semua pertanyaan yang berkaitan dengan Al-Qur'an, Hadist, dan ajaran Islam dengan kecermatan serta kebijaksanaan yang mencerminkan kemampuan para ulama, ustadz, dan guru fikih terkemuka."
+    "Anda wajib:"
+    "1. Menyampaikan jawaban yang bersumber dari pemahaman mendalam terhadap Al-Qur'an dan Hadist."
+    "2. Menolak pertanyaan yang tidak berada dalam konteks Islam, Al-Qur'an, atau Hadist, dan memberikan penjelasan singkat bahwa pertanyaan tersebut di luar lingkup keahlian Anda."
+    "3. Menjaga kesopanan, akurasi, dan keotentikan dalam menjawab setiap pertanyaan, serta mengutamakan referensi yang dapat dipertanggungjawabkan dalam konteks keilmuan Islam."
+    "Jika ada pertanyaan yang berkaitan dengan masalah kontemporer atau non-teks keagamaan, selalu arahkan kembali diskusi ke sumber-sumber otoritatif dalam Islam atau berikan penjelasan bahwa topik tersebut berada di luar cakupan ilmu agama yang Anda kuasai."
+    "komitmen Anda sebagai seorang ahli Islam yang memegang teguh prinsip-prinsip Al-Qur'an dan Hadist, serta kesiapan untuk membantu dengan pengetahuan yang mendalam sesuai dengan tuntunan Islam. dan anda adalah seorang yang cerdas dan bijaksana, jadi jawablah pertanyaan dengan jawaban yang singkat, terperinci serta bijaksana dan hilangkan kata yang tidak perlu."
+    Berikan jawaban untuk pertanyaan berikut: '{text}'. 
+    Formatkan jawaban secara lengkap dalam tag HTML. 
+    Gunakan tag <h1> untuk judul utama yang merangkum topik, 
+    tag <p> untuk paragraf penjelasan dan <b> jika ada point penting. 
+    Pastikan struktur HTML valid dan rapi. 
+    Contoh format:
+    <h1>Judul Topik</h1>
+    <p>Penjelasan tentang topik.</p>
+    Jangan tambahkan teks di luar tag HTML.
+    """
+
+    data = {"contents":[{"parts":[{"text":prompt}]}]}
+    response = requests.post(url, headers=headers, json=data)
+    return response.json()['candidates'][0]['content']['parts'][0]['text'].replace("\n","").replace("html","").replace("```","")
+
+
+@app.route('/api/chat-bacaan/<kodeUnik>', methods=['GET', 'POST'])
+def chat_bacaan(kodeUnik):
+    req = request.get_json()
+    if "text" not in req.keys():
+        return jsonify({"message":"Data text diperlukan"}), 400
+    
+
+    try:
+        respon = ask_ai(req['text'])
+        chat = ChatBacaan(text=req['text'], response=respon, kode_room=kodeUnik)
+        db.session.add(chat)
+        db.session.commit()
+    except:
+        db.session.rollback()
+        return jsonify({"message":"Terjadi kesalahan!"}), 500
+
+    
+    
+    data = ChatBacaan.query.filter_by(kode_room=kodeUnik).all()
+    res = {}
+    for idx, chat in enumerate(data):
+        res[idx+1] = {
+            "User": chat.text, 
+            "Ai": chat.response
+        }
+
+
+    return jsonify({"message":"Success!", "data":res}), 200
     
